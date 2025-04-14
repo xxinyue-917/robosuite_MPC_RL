@@ -7,7 +7,7 @@ import os
 # Create environment instance with default controller
 # No custom controller configuration to avoid compatibility issues
 env = suite.make(
-    env_name="Lift",
+    env_name="Stack",
     robots="Panda",
     has_renderer=True,
     has_offscreen_renderer=False,
