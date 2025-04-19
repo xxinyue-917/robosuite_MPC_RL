@@ -58,10 +58,17 @@ def generate_mpc_waypoints_dccp(
 
 if __name__ == "__main__":
     # define problem
-    start = np.array([-0.6, -0.5])
-    end   = np.array([0.5, 0.5])
-    obs_positions = [np.array([5.0, 5.0]), np.array([7.0, 3.0])]
-    obs_radii     = [1.0, 1.0]
+    cubeA_center = np.array([-0.5,  0.0])
+    cubeB_center = np.array([-0.3,  0.3])
+    cubeC_center = np.array([ 0.0,  0.1])
+    cubeD_center = np.array([ 0.3, -0.3])
+    cubeE_center = np.array([ 0.4,  0.0])
+    cubeF_center = np.array([-0.3, -0.3])
+
+    start = np.array([-0.5, -0.5])
+    end   = np.array([0.35, 0.35])
+    obs_positions = [cubeA_center, cubeB_center, cubeC_center, cubeD_center, cubeE_center, cubeF_center]
+    obs_radii     = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
 
     # generate
     waypoints = generate_mpc_waypoints_dccp(
