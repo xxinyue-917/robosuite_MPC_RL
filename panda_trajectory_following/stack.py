@@ -8,7 +8,7 @@ from robosuite.models.objects import BoxObject
 from robosuite.models.tasks import ManipulationTask
 from robosuite.utils.mjcf_utils import CustomMaterial
 from robosuite.utils.observables import Observable, sensor
-from robosuite.utils.placement_samplers import UniformRandomSampler
+from robosuite.utils.placement_samplers import UniformRandomSampler, SequentialCompositeSampler
 from robosuite.utils.transform_utils import convert_quat
 
 
@@ -347,43 +347,60 @@ class Stack(ManipulationEnv):
         )
         self.cubeA = BoxObject(
             name="cubeA",
-            size_min=[0.04, 0.04, 0.2],
-            size_max=[0.05, 0.05, 0.2],
+            size_min=[0.035, 0.035, 0.1],
+            size_max=[0.04, 0.04, 0.1],
             rgba=[1, 0, 0, 1],
             material=redwood,
         )
         self.cubeB = BoxObject(
             name="cubeB",
-            size_min=[0.03, 0.03, 0.2],
-            size_max=[0.05, 0.05, 0.2],
+            size_min=[0.025, 0.025, 0.12],
+            size_max=[0.04, 0.04, 0.12],
             rgba=[0, 1, 0, 1],
             material=greenwood,
         )
         self.cubeC = BoxObject(
             name="cubeC",
-            size_min=[0.015, 0.015, 0.2],
-            size_max=[0.05, 0.05, 0.2],
+            size_min=[0.012, 0.012, 0.08],
+            size_max=[0.04, 0.04, 0.08],
             rgba=[0, 1, 1, 1],
             material=greenwood,
         )
         self.cubeD = BoxObject(
             name="cubeD",
-            size_min=[0.015, 0.015, 0.2],
-            size_max=[0.05, 0.05, 0.2],
+            size_min=[0.012, 0.012, 0.15],
+            size_max=[0.04, 0.04, 0.15],
             rgba=[1, 0, 1, 1],
             material=redwood,
         )
-        cubes = [self.cubeA, self.cubeB, self.cubeC, self.cubeD]
+        self.cubeE = BoxObject(
+            name="cubeE",
+            size_min=[0.018, 0.018, 0.064],
+            size_max=[0.036, 0.036, 0.064],
+            rgba=[1, 1, 0, 1],
+            material=redwood,
+        )
+        self.cubeF = BoxObject(
+            name="cubeF",
+            size_min=[0.03, 0.03, 0.18],
+            size_max=[0.04, 0.04, 0.18],
+            rgba=[0, 0, 1, 1],
+            material=greenwood,
+        )
+
+        cubes = [self.cubeA, self.cubeB, self.cubeC, self.cubeD, self.cubeE, self.cubeF]
+
         # Create placement initializer
         if self.placement_initializer is not None:
             self.placement_initializer.reset()
             self.placement_initializer.add_objects(cubes)
         else:
+            # Perfect horizontal line placement (fixed y value)
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=cubes,
-                x_range=[-0.4, 0.4],
-                y_range=[-0.4, 0.4],
+                x_range=[0.2, 0.2],
+                y_range=[-0.5, 0.5],  # Same min and max for a perfect line
                 rotation=None,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
@@ -406,9 +423,13 @@ class Stack(ManipulationEnv):
         """
         super()._setup_references()
 
-        # Additional object references from this env
+        # Additional object references from this env - set up references for all cubes
         self.cubeA_body_id = self.sim.model.body_name2id(self.cubeA.root_body)
         self.cubeB_body_id = self.sim.model.body_name2id(self.cubeB.root_body)
+        self.cubeC_body_id = self.sim.model.body_name2id(self.cubeC.root_body)
+        self.cubeD_body_id = self.sim.model.body_name2id(self.cubeD.root_body)
+        self.cubeE_body_id = self.sim.model.body_name2id(self.cubeE.root_body)
+        self.cubeF_body_id = self.sim.model.body_name2id(self.cubeF.root_body)
 
     def _reset_internal(self):
         """
@@ -429,7 +450,7 @@ class Stack(ManipulationEnv):
     def _setup_observables(self):
         """
         Sets up observables to be used for this environment. Creates object-based observables if enabled
-
+        
         Returns:
             OrderedDict: Dictionary mapping observable names to its corresponding Observable object
         """
@@ -440,7 +461,7 @@ class Stack(ManipulationEnv):
             # define observables modality
             modality = "object"
 
-            # position and rotation of the first cube
+            # position and rotation of all cubes
             @sensor(modality=modality)
             def cubeA_pos(obs_cache):
                 return np.array(self.sim.data.body_xpos[self.cubeA_body_id])
@@ -456,7 +477,40 @@ class Stack(ManipulationEnv):
             @sensor(modality=modality)
             def cubeB_quat(obs_cache):
                 return convert_quat(np.array(self.sim.data.body_xquat[self.cubeB_body_id]), to="xyzw")
+            
+            @sensor(modality=modality)
+            def cubeC_pos(obs_cache):
+                return np.array(self.sim.data.body_xpos[self.cubeC_body_id])
 
+            @sensor(modality=modality)
+            def cubeC_quat(obs_cache):
+                return convert_quat(np.array(self.sim.data.body_xquat[self.cubeC_body_id]), to="xyzw")
+            
+            @sensor(modality=modality)
+            def cubeD_pos(obs_cache):
+                return np.array(self.sim.data.body_xpos[self.cubeD_body_id])
+
+            @sensor(modality=modality)
+            def cubeD_quat(obs_cache):
+                return convert_quat(np.array(self.sim.data.body_xquat[self.cubeD_body_id]), to="xyzw")
+            
+            @sensor(modality=modality)
+            def cubeE_pos(obs_cache):
+                return np.array(self.sim.data.body_xpos[self.cubeE_body_id])
+
+            @sensor(modality=modality)
+            def cubeE_quat(obs_cache):
+                return convert_quat(np.array(self.sim.data.body_xquat[self.cubeE_body_id]), to="xyzw")
+            
+            @sensor(modality=modality)
+            def cubeF_pos(obs_cache):
+                return np.array(self.sim.data.body_xpos[self.cubeF_body_id])
+
+            @sensor(modality=modality)
+            def cubeF_quat(obs_cache):
+                return convert_quat(np.array(self.sim.data.body_xquat[self.cubeF_body_id]), to="xyzw")
+
+            # Relative positions between objects
             @sensor(modality=modality)
             def cubeA_to_cubeB(obs_cache):
                 return (
@@ -464,16 +518,63 @@ class Stack(ManipulationEnv):
                     if "cubeA_pos" in obs_cache and "cubeB_pos" in obs_cache
                     else np.zeros(3)
                 )
+            
+            @sensor(modality=modality)
+            def cubeB_to_cubeC(obs_cache):
+                return (
+                    obs_cache["cubeC_pos"] - obs_cache["cubeB_pos"]
+                    if "cubeB_pos" in obs_cache and "cubeC_pos" in obs_cache
+                    else np.zeros(3)
+                )
+            
+            @sensor(modality=modality)
+            def cubeC_to_cubeD(obs_cache):
+                return (
+                    obs_cache["cubeD_pos"] - obs_cache["cubeC_pos"]
+                    if "cubeC_pos" in obs_cache and "cubeD_pos" in obs_cache
+                    else np.zeros(3)
+                )
+            
+            @sensor(modality=modality)
+            def cubeD_to_cubeE(obs_cache):
+                return (
+                    obs_cache["cubeE_pos"] - obs_cache["cubeD_pos"]
+                    if "cubeD_pos" in obs_cache and "cubeE_pos" in obs_cache
+                    else np.zeros(3)
+                )
+            
+            @sensor(modality=modality)
+            def cubeE_to_cubeF(obs_cache):
+                return (
+                    obs_cache["cubeF_pos"] - obs_cache["cubeE_pos"]
+                    if "cubeE_pos" in obs_cache and "cubeF_pos" in obs_cache
+                    else np.zeros(3)
+                )
 
             arm_prefixes = self._get_arm_prefixes(self.robots[0], include_robot_name=False)
             full_prefixes = self._get_arm_prefixes(self.robots[0])
 
-            sensors = [cubeA_pos, cubeA_quat, cubeB_pos, cubeB_quat, cubeA_to_cubeB]
+            sensors = [
+                cubeA_pos, cubeA_quat, 
+                cubeB_pos, cubeB_quat, 
+                cubeC_pos, cubeC_quat,
+                cubeD_pos, cubeD_quat,
+                cubeE_pos, cubeE_quat,
+                cubeF_pos, cubeF_quat,
+                cubeA_to_cubeB,
+                cubeB_to_cubeC,
+                cubeC_to_cubeD,
+                cubeD_to_cubeE,
+                cubeE_to_cubeF
+            ]
+            
+            # Add sensors for distance from end effector to each cube
             sensors += [
                 self._get_obj_eef_sensor(full_pf, f"{cube}_pos", f"{arm_pf}gripper_to_{cube}", modality)
                 for arm_pf, full_pf in zip(arm_prefixes, full_prefixes)
-                for cube in ["cubeA", "cubeB"]
+                for cube in ["cubeA", "cubeB", "cubeC", "cubeD", "cubeE", "cubeF"]
             ]
+            
             names = [s.__name__ for s in sensors]
 
             # Create observables
