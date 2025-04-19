@@ -49,7 +49,7 @@ def read_trajectory_from_csv(file_path):
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
-csv_path = os.path.join(script_dir, "complex_trajectory.csv")
+csv_path = os.path.join(script_dir, "mpc_trajectory.csv")
 
 # Load the trajectory
 trajectory, descriptions = read_trajectory_from_csv(csv_path)
@@ -72,7 +72,7 @@ print("Will follow points in sequence, considering a point reached when end-effe
 # Define orientation to face the user (assumed to be in front of the robot)
 # For a Panda robot, this orients the end-effector to point toward negative y-axis
 # Format: [rotation around x, rotation around y, rotation around z] in axis-angle format
-facing_user_orientation = np.array([np.pi/2, 0, 0])
+facing_user_orientation = np.array([0, 0, 0])
 
 # Main control loop
 for i in range(2000):  # Increased to give more time
