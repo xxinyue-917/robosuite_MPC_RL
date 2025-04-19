@@ -1,0 +1,14 @@
+x,y,z,description
+0.4,-0.3,0.25,start point - left side of table
+0.45,-0.25,0.25,intermediate point 1
+0.5,-0.2,0.25,intermediate point 2
+0.55,-0.15,0.25,intermediate point 3
+0.6,-0.1,0.25,intermediate point 4
+0.65,-0.05,0.25,intermediate point 5
+0.7,0.0,0.25,middle point of table
+0.75,0.05,0.25,intermediate point 6
+0.8,0.1,0.25,intermediate point 7
+0.85,0.15,0.25,intermediate point 8
+0.9,0.2,0.25,intermediate point 9
+0.95,0.25,0.25,intermediate point 10
+1.0,0.3,0.25,end point - right side of table 
