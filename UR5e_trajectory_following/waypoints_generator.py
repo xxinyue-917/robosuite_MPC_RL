@@ -58,8 +58,8 @@ def generate_mpc_waypoints_dccp(
 
 if __name__ == "__main__":
     # define problem
-    start = np.array([0.0, 0.0])
-    end   = np.array([10.0, 10.0])
+    start = np.array([-0.3, -0.3])
+    end   = np.array([0.3, 0.3])
     obs_positions = [np.array([5.0, 5.0]), np.array([7.0, 3.0])]
     obs_radii     = [1.0, 1.0]
 
@@ -84,8 +84,8 @@ if __name__ == "__main__":
         # Write waypoints
         for i in range(waypoints.shape[1]):
             x, y = waypoints[:, i]
-            # Add z coordinate (1.25) and description
-            csv_writer.writerow([x, y, 1.25, f"MPC generated waypoint {i+1}/{waypoints.shape[1]}"])
+            # Add z coordinate (0.8) and description
+            csv_writer.writerow([x, y, 0.8, f"MPC generated waypoint {i+1}/{waypoints.shape[1]}"])
     
     print(f"Saved {waypoints.shape[1]} waypoints to {csv_path}")
 
