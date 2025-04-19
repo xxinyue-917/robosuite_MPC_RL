@@ -1,6 +1,0 @@
-iteration=1, cost value=0.40530, tau=0.00500, solver status=optimal
-max slack = 8.41146
-iteration=2, cost value=0.00960, tau=0.00600, solver status=optimal
-max slack = 0.00009
-iteration=3, cost value=0.00960, tau=0.00720, solver status=optimal
-max slack = 0.00004

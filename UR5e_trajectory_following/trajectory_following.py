@@ -5,7 +5,6 @@ import csv
 import os
 
 # Create environment instance with default controller
-# No custom controller configuration to avoid compatibility issues
 env = suite.make(
     env_name="Stack",
     robots="UR5e",
@@ -14,16 +13,19 @@ env = suite.make(
     has_offscreen_renderer=False,
     use_camera_obs=False,
     use_object_obs=True,  # Enable object observations
+    placement_initializer=None
 )
 
 # Reset the environment
 obs = env.reset()
-cubeA_center = obs["cubeA_pos"]   # e.g. array([x, y, z])
-cubeB_center = obs["cubeB_pos"]
-cubeC_center = obs["cubeC_pos"]
-cubeD_center = obs["cubeD_pos"]
-cubeE_center = obs["cubeE_pos"]
-cubeF_center = obs["cubeF_pos"]
+
+# Get the locations of all the blocks
+cubeA_center = obs["cubeA_pos"][0:1]   # e.g. array([x, y, z])
+cubeB_center = obs["cubeB_pos"][0:1]
+cubeC_center = obs["cubeC_pos"][0:1]
+cubeD_center = obs["cubeD_pos"][0:1]
+cubeE_center = obs["cubeE_pos"][0:1]
+cubeF_center = obs["cubeF_pos"][0:1]
 print("Red block at", cubeA_center)
 print("Green block at", cubeB_center)
 print("Blue block at", cubeC_center)
@@ -75,7 +77,7 @@ point_idx = 0                # Current trajectory point index
 point_threshold = 0.08       # Distance threshold to consider a point reached (increased for tolerance)
 max_steps_per_point = 150    # Maximum steps before moving to next point
 current_point_steps = 0      # Steps spent on current point
-kp = 0.8                     # Proportional gain (reduced for smoother motion)
+kp = 2.0                    # Proportional gain (reduced for smoother motion)
 
 print("\nStarting trajectory following...")
 print(f"Trajectory has {len(trajectory)} points")
