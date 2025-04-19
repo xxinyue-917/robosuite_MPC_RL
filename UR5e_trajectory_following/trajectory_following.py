@@ -9,6 +9,7 @@ import os
 env = suite.make(
     env_name="Stack",
     robots="UR5e",
+    horizon=1200,
     has_renderer=True,
     has_offscreen_renderer=False,
     use_camera_obs=False,
@@ -17,6 +18,18 @@ env = suite.make(
 
 # Reset the environment
 obs = env.reset()
+cubeA_center = obs["cubeA_pos"]   # e.g. array([x, y, z])
+cubeB_center = obs["cubeB_pos"]
+cubeC_center = obs["cubeC_pos"]
+cubeD_center = obs["cubeD_pos"]
+cubeE_center = obs["cubeE_pos"]
+cubeF_center = obs["cubeF_pos"]
+print("Red block at", cubeA_center)
+print("Green block at", cubeB_center)
+print("Blue block at", cubeC_center)
+print("Yellow block at", cubeD_center)
+print("Orange block at", cubeE_center)
+print("Purple block at", cubeF_center)
 
 # Print observation keys and action dimensions for debugging
 print("Observation keys:", obs.keys())
@@ -75,7 +88,7 @@ print("Will follow points in sequence, considering a point reached when end-effe
 facing_user_orientation = np.array([0, 0, 0])
 
 # Main control loop
-for i in range(2000):  # Increased to give more time
+for i in range(5000):  # Increased to give more time
     # Get current end-effector position
     ee_pos = obs["robot0_eef_pos"]
     
@@ -114,7 +127,7 @@ for i in range(2000):  # Increased to give more time
     env.render()
     
     # Print progress occasionally
-    if i % 30 == 0:
+    if i % 100 == 0:
         print(f"Step {i}, Point {point_idx}/{len(trajectory)-1}, Distance: {distance:.4f}")
         print(f"  Current position: {ee_pos}")
         print(f"  Target position: {target_pos} - {description}")

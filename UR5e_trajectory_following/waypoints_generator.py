@@ -58,8 +58,8 @@ def generate_mpc_waypoints_dccp(
 
 if __name__ == "__main__":
     # define problem
-    start = np.array([-0.3, -0.3])
-    end   = np.array([0.3, 0.3])
+    start = np.array([-0.6, -0.5])
+    end   = np.array([0.5, 0.5])
     obs_positions = [np.array([5.0, 5.0]), np.array([7.0, 3.0])]
     obs_radii     = [1.0, 1.0]
 
