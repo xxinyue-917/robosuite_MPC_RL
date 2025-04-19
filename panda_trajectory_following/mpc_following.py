@@ -1,55 +1,25 @@
 """
-mpc_follow.py
----------------------------------
-3D End-Effector MPC Tracking using CasADi.
-• Robot: Panda (robosuite)
-• Reference Trajectory: CSV (x,y,z,description)
-• Dynamics: Simplified first-order kinematics: x_{k+1} = x_k + v_k⋅dt
-• Constraints: velocity magnitude ≤ 0.15 m/s, avoid circular obstacle (radius=0.08) @ (0,0,1.25)
+MPC End-Effector Tracking for Panda Robot
+- Robosuite 1.5.1
+- BASIC Controller
+- CasADi + IPOPT
 """
 
-import csv, os, time
+import os, time, csv
 import numpy as np
 import casadi as ca
 import robosuite as suite
-import json
+from robosuite.controllers import load_composite_controller_config
 
-os.environ['MUJOCO_GL'] = 'glfw'
-
-def load_default_panda_cfg():
-    """Load default Panda controller configuration."""
-    cfg_path = os.path.join(
-        os.path.dirname(suite.__file__),
-        "controllers", "config", "robots", "default_panda.json",
-    )
-    with open(cfg_path, "r") as f:
-        cfg = json.load(f)
-
-    return {"right": cfg}
-
-
-# --------------------------------------------------------------------- #
-# Load CSV trajectory (with header)
-def load_traj(csv_path):
-    pts, desc = [], []
-    with open(csv_path, newline="") as f:
-        r = csv.reader(f); next(r)      # Skip header
-        for row in r:
-            pts.append([float(row[0]), float(row[1]), float(row[2])])
-            desc.append(row[3] if len(row) > 3 else "")
-    return np.asarray(pts), desc
-
-
-# --------------------------------------------------------------------- #
+# ---------------------------------------------------------------
+# 1. Create Environment
 def make_env():
-    """Create robosuite Lift environment with Panda."""
-    ctrl_cfg = load_default_panda_cfg()
-    ctrl_cfg["right"]["control_delta"] = True  # Enable delta control
+    ctrl_cfg = load_composite_controller_config(controller="BASIC")
     env = suite.make(
-        "Lift",
+        env_name="Lift",
         robots="Panda",
         controller_configs=ctrl_cfg,
-        env_configuration="single-arm-opposed",
+        env_configuration="default",
         has_renderer=True,
         has_offscreen_renderer=False,
         use_camera_obs=False,
@@ -58,99 +28,127 @@ def make_env():
     )
     return env
 
+# ---------------------------------------------------------------
+# 2. Load Trajectory
+def load_traj(csv_path):
+    pts, desc = [], []
+    with open(csv_path, newline="") as f:
+        reader = csv.reader(f)
+        next(reader)  # skip header
+        for row in reader:
+            pts.append([float(x) for x in row[:3]])
+            desc.append(row[3] if len(row) > 3 else "")
+    return np.array(pts), desc
 
-# --------------------------------------------------------------------- #
-# MPC Parameters
-H, dt = 15, 1/30           # Prediction horizon, simulation time step
-v_max = 0.15               # Velocity constraint (m/s)
-obs_center = np.array([0.0, 0.0, 1.25])  # Obstacle center
-obs_radius = 0.08          # Obstacle radius
+# ---------------------------------------------------------------
+# 3. Build MPC Model
+H = 15                      # Horizon
+dt = 1/30                   # Timestep
+v_max = 0.15                # Max velocity (m/s)
 
-# Build CasADi MPC problem
-nx, nu = 3, 3
+nx = nu = 3
 x = ca.SX.sym("x", nx)
 u = ca.SX.sym("u", nu)
-f = ca.Function("f", [x, u], [x + u * dt])  # Discrete dynamics
+f = ca.Function("f", [x, u], [x + u * dt])
 
 U = ca.SX.sym("U", nu, H)
-X = ca.SX.sym("X", nx, H + 1)
-P = ca.SX.sym("P", nx + nx * H)      # p[0:3] = x0, the rest = references
+X = ca.SX.sym("X", nx, H+1)
+P = ca.SX.sym("P", nx + nx*H)
 
-obj, g = 0, []
-Q = np.diag([40, 40, 80])            # Weight for position error
-R = np.eye(nu) * 1e-2                # Weight for control effort
+Q = np.diag([40, 40, 80])
+R = np.eye(3) * 1e-2
 
-# Initial state constraint
-g += [X[:, 0] - P[0:3]]
+obj = 0
+g = []
+g.append(X[:, 0] - P[0:3])  # initial constraint
 
 for k in range(H):
-    x_ref = P[3 + k * 3 : 3 + (k + 1) * 3]
-    # Objective function: tracking error + control effort
-    obj += ca.mtimes([(X[:, k] - x_ref).T, Q, (X[:, k] - x_ref)]) + ca.mtimes([U[:, k].T, R, U[:, k]])
-    # System dynamics
-    g += [X[:, k + 1] - f(X[:, k], U[:, k])]
-    # Velocity constraint |u| ≤ v_max
-    g += [U[:, k] - v_max, -U[:, k] - v_max]
-    # Obstacle avoidance: (r^2 - ||x-c||^2) ≤ 0
-    g += [obs_radius ** 2 - ca.sumsqr(X[:, k] - obs_center)]
+    ref = P[3+3*k : 3+3*(k+1)]
+    obj += ca.mtimes([(X[:,k]-ref).T, Q, (X[:,k]-ref)]) + ca.mtimes([U[:,k].T, R, U[:,k]])
+    g.append(X[:,k+1] - f(X[:,k], U[:,k]))
 
-# Assemble NLP
-OPT = {"ipopt.print_level": 0, "ipopt.sb": "yes"}
-nlp = {"f": obj, "x": ca.vertcat(U.reshape((-1, 1)), X.reshape((-1, 1))), "p": P, "g": ca.vertcat(*g)}
-solver = ca.nlpsol("solver", "ipopt", nlp, OPT)
+nlp = {"f": obj,
+       "x": ca.vertcat(U.reshape((-1,1)), X.reshape((-1,1))),
+       "p": P,
+       "g": ca.vertcat(*g)}
 
-# Bounds for constraints
-lbg = np.zeros((len(g), 1))
-ubg = np.zeros((len(g), 1))
-# Velocity bounds are enforced via g
-lbx = -np.inf * np.ones(U.numel() + X.numel())
-ubx = np.inf * np.ones(U.numel() + X.numel())
+solver = ca.nlpsol("solver", "ipopt", nlp, {"ipopt.print_level": 0})
 
+# Variable bounds
+lbx = []
+ubx = []
+for _ in range(H):
+    lbx += [-v_max] * 3   # for U
+    ubx += [ v_max] * 3
+for _ in range(H+1):
+    lbx += [-np.inf] * 3  # for X
+    ubx += [ np.inf] * 3
+lbx = np.array(lbx).reshape((-1,1))
+ubx = np.array(ubx).reshape((-1,1))
 
-# --------------------------------------------------------------------- #
-def solve_mpc(x0, ref):
-    """Solve MPC for a given current state and future reference trajectory.
-    Args:
-        x0: current position, shape (3,)
-        ref: future reference points, shape (H, 3)
-    Returns:
-        Optimal velocity command, shape (3,)
-    """
-    p = np.concatenate([x0, ref.flatten()])
-    sol = solver(x0=np.zeros(lbx.shape), p=p, lbx=lbx, ubx=ubx, lbg=lbg, ubg=ubg)
-    u_opt = np.array(sol["x"][0:nu]).flatten()
-    return u_opt
+# Constraint bounds
+ng = 3 * (H+1)  # 3D for each state constraint
+lbg = np.zeros((ng, 1))
+ubg = np.zeros((ng, 1))
 
+# ---------------------------------------------------------------
+# 4. Solve MPC
+def solve_mpc(x0, ref_window):
+    p_vec = np.concatenate([x0, ref_window.flatten()])
+    sol = solver(x0=np.zeros(lbx.shape), p=p_vec,
+                 lbx=lbx, ubx=ubx, lbg=lbg, ubg=ubg)
+    return np.array(sol["x"][:nu]).flatten()
 
-# --------------------------------------------------------------------- #
+# ---------------------------------------------------------------
+# 5. Main Function
 def main(csv_path):
     traj, desc = load_traj(csv_path)
     env = make_env()
     obs = env.reset()
-    idx = 0
 
-    while idx < len(traj):
-        # Get current end-effector position
-        cur = env._eef_xpos.copy()
-        # Construct future reference window
-        future = np.vstack([traj[min(idx + k, len(traj) - 1)] for k in range(H)])
-        # Solve for MPC action
-        vel = solve_mpc(cur, future)
-        # Form full 7D action (delta position + fixed orientation + gripper)
-        action = np.concatenate([vel, obs["robot0_eef_quat"], [0]])
+    # Optional teleport to start
+    mocap_body = "right_eef_target"
+    start_pos = traj[0]
+    env.sim.data.set_mocap_pos(mocap_body, start_pos)
+    env.sim.forward()
+    time.sleep(0.5)
+
+    idx = 0
+    threshold = 0.02  # 2 cm
+    print(f"Trajectory loaded with {len(traj)} points.\n")
+
+    step_count = 0
+    max_steps = 4000
+
+    while idx < len(traj) and step_count < max_steps:
+        cur = obs["robot0_eef_pos"].copy()
+
+        # Build future window
+        future = np.vstack([traj[min(idx+k, len(traj)-1)] for k in range(H)])
+
+        vel_cmd = solve_mpc(cur, future)
+
+        action = np.concatenate([vel_cmd, np.zeros(3), [0.0]])
         obs, reward, done, _ = env.step(action)
         env.render()
 
-        # Check if the current reference point is reached
-        if np.linalg.norm(cur - traj[idx]) < 0.02:
+        dist = np.linalg.norm(cur - traj[idx])
+
+        if dist < threshold:
+            print(f"✅ Reached point {idx}: {desc[idx]} (dist={dist:.3f})")
             idx += 1
-            print(f"Reached waypoint {idx}/{len(traj)}:", desc[idx - 1])
+
         if done:
+            print("Environment done signal received!")
             break
 
+        step_count += 1
+        time.sleep(0.01)
+
     env.close()
+    print("\nMPC Trajectory Following Completed!")
 
-
+# ---------------------------------------------------------------
 if __name__ == "__main__":
     csv_file = os.path.join(os.path.dirname(__file__), "complex_trajectory.csv")
     main(csv_file)
