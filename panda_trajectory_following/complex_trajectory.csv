@@ -1,18 +1,14 @@
 x,y,z,description
-0.6,0.0,1.25,center point - start of figure 8
-0.6,0.06,1.35,upper quadrant of top loop
-0.6,0.12,1.30,right point of top loop
-0.6,0.08,1.22,lower quadrant of top loop
-0.6,0.0,1.18,bottom point of top loop
-0.6,-0.08,1.22,lower quadrant of top loop
-0.6,-0.12,1.30,left point of top loop
-0.6,-0.08,1.38,upper quadrant of top loop
-0.6,0.0,1.25,center crossing point
-0.6,-0.08,1.12,lower quadrant of bottom loop
-0.6,-0.12,1.20,left point of bottom loop
-0.6,-0.08,1.28,upper quadrant of bottom loop
-0.6,0.0,1.32,top point of bottom loop
-0.6,0.08,1.28,upper quadrant of bottom loop
-0.6,0.12,1.20,right point of bottom loop
-0.6,0.08,1.12,lower quadrant of bottom loop
-0.6,0.0,1.25,return to center
+-0.2,-0.2,1.0,start point - bottom left
+-0.15,-0.25,1.0,move left-bottom
+-0.05,-0.3,1.0,bypass below center
+0.05,-0.3,1.0,keep right below
+0.15,-0.25,1.0,move up-right
+0.25,-0.15,1.0,right side of center
+0.3,-0.05,1.0,move up
+0.3,0.05,1.0,move up
+0.25,0.15,1.0,move up-right
+0.15,0.25,1.0,almost at top-right
+0.05,0.3,1.0,top-right
+0.0,0.3,1.0,final adjustment
+-0.05,0.25,1.0,finish point - upper right
